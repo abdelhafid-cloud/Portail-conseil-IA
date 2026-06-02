@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ai_pass
+      POSTGRES_DB: ai_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+
+  backend:
+    build: ../services/backend
+    environment:
+      - DATABASE_URL=postgresql://ai_user:ai_pass@postgres:5432/ai_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: ../services/backend
+    command: celery -A celery_worker.celery worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://ai_user:ai_pass@postgres:5432/ai_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - postgres
+
+volumes:
+  db-data:

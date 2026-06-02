@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #2f5a35;
+  --brand-muted: #5f7d5c;
+  --brand-accent: #96a78d;
+  --brand-light: #b6ceb4;
+  --brand-pale: #eef7ec;
+  --brand-surface: #f8fcf7;
+  --brand-border: rgba(150, 167, 141, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-manrope), "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #ffffff 0%, var(--brand-surface) 55%, var(--brand-pale) 100%);
+  color: var(--brand);
+}
+
+::selection {
+  background: rgba(150, 167, 141, 0.25);
+  color: var(--brand);
+}
+
+@layer components {
+  .section-shell {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-label {
+    @apply inline-block text-xs font-semibold uppercase tracking-widest text-brand-muted;
+  }
+
+  .card {
+    @apply rounded-2xl border bg-white p-6;
+    border-color: var(--brand-border);
+    box-shadow: 0 4px 24px rgba(47, 90, 53, 0.06);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-muted;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-brand-accent/40 bg-white px-5 py-2.5 text-sm font-semibold text-brand transition hover:border-brand hover:bg-brand-pale;
+  }
+}

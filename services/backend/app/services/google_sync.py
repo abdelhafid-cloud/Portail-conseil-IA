@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -26,6 +27,23 @@ def _resolve_path(raw: str) -> Path:
     return path
 
 
+def _load_token_credentials(token_path: Path):
+    from google.oauth2.credentials import Credentials
+
+    try:
+        return Credentials.from_authorized_user_file(str(token_path), GOOGLE_SCOPES)
+    except ValueError:
+        data = json.loads(token_path.read_text(encoding='utf-8'))
+        return Credentials(
+            token=data.get('token'),
+            refresh_token=data.get('refresh_token'),
+            token_uri=data.get('token_uri', 'https://oauth2.googleapis.com/token'),
+            client_id=data.get('client_id'),
+            client_secret=data.get('client_secret'),
+            scopes=data.get('scopes', GOOGLE_SCOPES),
+        )
+
+
 def _build_credentials():
     try:
         from google.auth.transport.requests import Request
@@ -35,9 +53,7 @@ def _build_credentials():
         return None
 
     token_file = current_app.config.get('GOOGLE_OAUTH_TOKEN_FILE', 'google-oauth-token.json').strip()
-    client_file = current_app.config.get('GOOGLE_OAUTH_CLIENT_FILE', 'google-oauth-client.json').strip()
     token_path = _resolve_path(token_file)
-    client_path = _resolve_path(client_file)
 
     refresh_token = current_app.config.get('GOOGLE_OAUTH_REFRESH_TOKEN', '').strip()
     client_id = current_app.config.get('GOOGLE_OAUTH_CLIENT_ID', '').strip()
@@ -46,14 +62,25 @@ def _build_credentials():
     credentials = None
 
     if token_path.exists():
-        credentials = Credentials.from_authorized_user_file(str(token_path), GOOGLE_SCOPES)
-
-    if credentials and credentials.expired and credentials.refresh_token:
         try:
-            credentials.refresh(Request())
-            token_path.write_text(credentials.to_json(), encoding='utf-8')
+            credentials = _load_token_credentials(token_path)
         except Exception:
-            logger.exception('Google OAuth refresh failed')
+            logger.exception('Impossible de charger le token Google OAuth')
+            credentials = None
+
+    if credentials and credentials.expired:
+        if credentials.refresh_token:
+            try:
+                credentials.refresh(Request())
+                token_path.write_text(credentials.to_json(), encoding='utf-8')
+            except Exception:
+                logger.exception('Google OAuth refresh failed')
+                credentials = None
+        else:
+            logger.error(
+                'Token Google expire sans refresh_token. '
+                'Relancez: python scripts/google_oauth_setup.py'
+            )
             credentials = None
 
     if credentials and credentials.valid:

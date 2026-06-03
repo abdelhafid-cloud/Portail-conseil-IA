@@ -56,9 +56,13 @@ def main() -> None:
 
     credentials = None
     if TOKEN_FILE.exists():
-        credentials = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        try:
+            credentials = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        except ValueError:
+            print('Ancien token invalide (refresh_token manquant), nouvelle connexion requise.')
+            credentials = None
 
-    if credentials and credentials.valid:
+    if credentials and credentials.valid and credentials.refresh_token:
         print('Token OAuth déjà valide:', TOKEN_FILE)
         return
 
@@ -71,9 +75,19 @@ def main() -> None:
         print('Ouverture du navigateur pour autoriser Google Calendar + Sheets…')
         print(f'Port local: {port}')
         print(f'URI de redirection: {redirect_uri}')
-        print('Ajoutez cette URI dans Google Cloud → Credentials → Authorized redirect URIs')
+        print('Ajoutez cette URI dans Google Cloud > Credentials > Authorized redirect URIs')
         print('(Fermez les autres scripts OAuth en cours si le port était occupé.)')
-        credentials = flow.run_local_server(port=port, open_browser=True)
+        credentials = flow.run_local_server(
+            port=port,
+            open_browser=True,
+            access_type='offline',
+            prompt='consent',
+        )
+
+    if not credentials.refresh_token:
+        print('ERREUR: Google n\'a pas renvoye de refresh_token.')
+        print('Supprimez google-oauth-token.json et relancez ce script.')
+        sys.exit(1)
 
     TOKEN_FILE.write_text(credentials.to_json(), encoding='utf-8')
     print(f'Token enregistré: {TOKEN_FILE}')
